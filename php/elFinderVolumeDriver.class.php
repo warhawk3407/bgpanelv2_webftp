@@ -2091,11 +2091,19 @@ abstract class elFinderVolumeDriver {
 	 * @return string
 	 * @author Dmitry (dio) Levashov
 	 **/
-	protected function mimetype($path) {
+	protected function mimetype($path, $name = '') {
 		$type = '';
 		
 		if ($this->mimeDetect == 'finfo') {
-			$type = @finfo_file($this->finfo, $path); 
+			if ($type = @finfo_file($this->finfo, $path)) {
+				if ($name === '') {
+					$name = $path;
+				}
+				$ext = (false === $pos = strrpos($name, '.')) ? '' : substr($name, $pos + 1);
+				if ($ext && preg_match('~^application/(?:octet-stream|(?:x-)?zip)~', $type)) {
+					if (isset(elFinderVolumeDriver::$mimetypes[$ext])) $type = elFinderVolumeDriver::$mimetypes[$ext];
+				}
+			}
 		} elseif ($type == 'mime_content_type') {
 			$type = mime_content_type($path);
 		} else {
@@ -2104,8 +2112,8 @@ abstract class elFinderVolumeDriver {
 		
 		$type = explode(';', $type);
 		$type = trim($type[0]);
-		
-		if ($type == 'application/x-empty') {
+
+		if (in_array($type, array('application/x-empty', 'inode/x-empty'))) {
 			// finfo return this mime for empty files
 			$type = 'text/plain';
 		} elseif ($type == 'application/x-zip') {
