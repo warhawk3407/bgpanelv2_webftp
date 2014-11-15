@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>elFinder 2.0</title>
+
+		<!-- jQuery and jQuery UI (REQUIRED) -->
+		<link rel="stylesheet" type="text/css" media="screen" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/themes/smoothness/jquery-ui.css">
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/jquery-ui.min.js"></script>
+
+		<!-- elFinder CSS (REQUIRED) -->
+		<link rel="stylesheet" type="text/css" media="screen" href="css/elfinder.min.css">
+		<link rel="stylesheet" type="text/css" media="screen" href="css/theme.css">
+
+		<!-- elFinder JS (REQUIRED) -->
+		<script type="text/javascript" src="js/elfinder.min.js"></script>
+
+		<!-- CODEMIRROR -->
+		<script src="codemirror/lib/codemirror.js"></script>
+
+		<link rel="stylesheet" type="text/css" href="codemirror/lib/codemirror.css">
+		<link rel="stylesheet" type="text/css" href="codemirror/theme/monokai.css">
+
+		<script src="codemirror/mode/javascript/javascript.js"></script>
+
+		<style>
+		.CodeMirror {
+		border: 1px solid #eee;
+		height: auto;
+		}
+
+		.CodeMirror-scroll {
+		overflow-y: hidden;
+		overflow-x: auto;
+		}
+		</style>
+
+		<!-- elFinder initialization (REQUIRED) -->
+		<script type="text/javascript" charset="utf-8">
+			$().ready(function() {
+				var elf = $('#elfinder').elfinder({
+					url : 'connector.php',  // connector URL (REQUIRED)
+
+					commandsOptions: {
+
+						edit : {
+							// list of allowed mimetypes to edit
+							// if empty - any text files can be edited
+							mimes : [],
+
+							// you can have a different editor for different mimes
+							editors : [{
+
+								mimes : [
+									'text/plain',
+									'text/html',
+									'text/x-php'
+								],
+
+								load : function(textarea) {
+
+									this.myCodeMirror = CodeMirror.fromTextArea(textarea, {
+										lineNumbers: true,
+										lineWrapping: true,
+										viewportMargin: Infinity,
+										theme: "monokai" 
+									})                                        
+								},
+
+								close : function(textarea, instance) {
+									this.myCodeMirror = null;
+								},
+
+
+								save : function(textarea, editor) {                                      
+									textarea.value = this.myCodeMirror.getValue();
+									this.myCodeMirror = null;
+								}
+
+							} ] // END: editors
+						} // END: edit
+
+					} // END: commandsoptions
+
+				}).elfinder('instance');
+			});
+		</script>
+	</head>
+	<body>
+
+		<!-- Element where elFinder will be created (REQUIRED) -->
+		<div id="elfinder"></div>
+
+	</body>
+</html>
