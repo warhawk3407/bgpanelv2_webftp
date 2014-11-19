@@ -32,6 +32,9 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 **/
 	protected $tmbPath = ELFINDER_TMB_PATH;
 
+	// SSH Obj (PHPSECLIB)
+	private $remote = FALSE;
+
 	/**
 	 * Prepare driver before mount volume.
 	 * Return true if volume is ready.
@@ -42,6 +45,12 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	{
 		// normalize root path
 		$this->root = $this->options['path'] = $this->_normpath($this->options['path']);
+
+		$parts = parse_url($this->root);
+		$ssh = new Net_SSH2($parts['host'], $parts['port']);
+		if ($ssh->login($parts['user'], $parts['pass'])) {
+			$this->remote = $ssh;
+		}
 
 		return true;
 	}
@@ -353,14 +362,45 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 *
 	 * @return void
 	 **/
-	protected function _checkArchivers() {
+	protected function _checkArchivers()
+	{
 		$arcs = array(
-			'create'  => array(),
-			'extract' => array()
+			'create'  => array()
 			);
 
-		// ----- Tests the zlib
-		if (function_exists('gzopen'))
+		// Get remote-fs utils
+		$ssh = $this->remote;
+
+		if ($ssh)
+		{
+			$tar = $ssh->exec('tar --version');
+
+			if (strstr($tar, "(GNU tar)") !== FALSE) {
+				$arcs['create']['application/x-tar']  = array('cmd' => 'tar', 'argc' => '-cf', 'ext' => 'tar');
+
+				$gzip = $ssh->exec('gzip --version');
+
+				if (strstr($gzip, "Jean-loup Gailly") !== FALSE) {
+					$arcs['create']['application/x-gzip']  = array('cmd' => 'tar', 'argc' => '-czf', 'ext' => 'tgz');
+				}
+
+				$bzip2 = $ssh->exec('bzip2 --version');
+
+				if (strstr($bzip2, "bzip2, a block-sorting file compressor.") !== FALSE) {
+					$arcs['create']['application/x-bzip2']  = array('cmd' => 'tar', 'argc' => '-cjf', 'ext' => 'tbz');
+				}
+			}
+
+			$zip = $ssh->exec('zip -v');
+
+			if (strstr($zip, "Info-ZIP") !== FALSE) {
+				$arcs['create']['application/zip']  = array('cmd' => 'zip', 'argc' => '-r9', 'ext' => 'zip');
+			}
+		}
+		unset($ssh);
+
+		// PclZip as last resort
+		if (function_exists('gzopen') && empty($arcs['create']['application/zip']))
 		{
 			$arcs['create']['application/zip'] = array('cmd' => 'zlib', 'argc' => 'pclzip', 'ext' => 'zip');
 		}
@@ -379,9 +419,26 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 **/
 	protected function _archive($dir, $files, $name, $arc)
 	{
+		$files = array_map('escapeshellarg', $files);
+		$archive_path = $dir . $this->separator . $name;
+
 		switch ($arc['argc'])
 		{
+			// tar/gzip/bz2
 			default:
+				$cmd = $arc['cmd'].' '.$arc['argc'].' '.escapeshellarg($name).' '.implode(' ', $files);
+
+				$ssh = $this->remote;
+
+				if ($ssh)
+				{
+					$ssh->exec( 'cd ' . $dir . '; ' . $cmd );
+				}
+				unset($ssh);
+	
+				break;
+
+			// last resort
 			case 'pclzip':
 				@set_time_limit(60);
 				$uniqid = uniqid();
@@ -398,7 +455,7 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 						@mkdir( $uniqfolder . DIRECTORY_SEPARATOR . $file );
 					}
 					
-					xcopy( $remote_path, $uniqfolder . DIRECTORY_SEPARATOR . $file );			
+					@xcopy( $remote_path, $uniqfolder . DIRECTORY_SEPARATOR . $file );			
 				}
 
 				$archive_path = ELFINDER_TMP_PATH . $this->separator . $name;
@@ -416,7 +473,6 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 				// Push to remote-fs
 				copy( $archive_path, $dir . $this->separator . $name );
 				unlink( $archive_path );
-				$archive_path = $dir . $this->separator . $name;
 				
 				break;
 		}
