@@ -349,6 +349,26 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	/********************  archive manipulations *************************/
 
 	/**
+	 * Detect available archivers
+	 *
+	 * @return void
+	 **/
+	protected function _checkArchivers() {
+		$arcs = array(
+			'create'  => array(),
+			'extract' => array()
+			);
+
+		// ----- Tests the zlib
+		if (function_exists('gzopen'))
+		{
+			$arcs['create']['application/zip'] = array('cmd' => 'zlib', 'argc' => 'pclzip', 'ext' => 'zip');
+		}
+
+		$this->archivers = $arcs;
+	}
+
+	/**
 	 * Create archive and return its path
 	 *
 	 * @param  string  $dir    target dir
@@ -357,18 +377,51 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 * @param  array   $arc    archiver options
 	 * @return string|bool
 	 **/
-	protected function _archive($dir, $files, $name, $arc) {
-		$cwd = getcwd();
-		chdir($dir);
-		
-		$files = array_map('escapeshellarg', $files);
-		
-		$cmd = $arc['cmd'].' '.$arc['argc'].' '.escapeshellarg($name).' '.implode(' ', $files);
-		$this->procExec($cmd, $o, $c);
-		chdir($cwd);
+	protected function _archive($dir, $files, $name, $arc)
+	{
+		switch ($arc['argc'])
+		{
+			default:
+			case 'pclzip':
+				@set_time_limit(60);
+				$uniqid = uniqid();
 
-		$path = $dir.$this->separator.$name;
-		return file_exists($path) ? $path : false;
+				// Tmp folder
+				$uniqfolder = ELFINDER_TMP_PATH . DIRECTORY_SEPARATOR . $uniqid; // Local
+				@mkdir($uniqfolder);
+
+				// Download from remote-fs to local-fs
+				foreach ($files as $file) {
+					$remote_path = $dir . $this->separator . $file;
+
+					if (is_dir($remote_path)) {
+						@mkdir( $uniqfolder . DIRECTORY_SEPARATOR . $file );
+					}
+					
+					xcopy( $remote_path, $uniqfolder . DIRECTORY_SEPARATOR . $file );			
+				}
+
+				$archive_path = ELFINDER_TMP_PATH . $this->separator . $name;
+				$archive = new PclZip( $archive_path );
+
+				$v_list = $archive->create( $uniqfolder, PCLZIP_OPT_REMOVE_PATH, $uniqfolder, PCLZIP_OPT_NO_COMPRESSION );
+
+				// Clean tmp folder
+				@rrmdir($uniqfolder);
+
+				if (!$v_list) {
+					return FALSE;
+				}
+
+				// Push to remote-fs
+				copy( $archive_path, $dir . $this->separator . $name );
+				unlink( $archive_path );
+				$archive_path = $dir . $this->separator . $name;
+				
+				break;
+		}
+
+		return file_exists($archive_path) ? $archive_path : FALSE;
 	}
 
 	protected function _unpack($path, $arc) {
