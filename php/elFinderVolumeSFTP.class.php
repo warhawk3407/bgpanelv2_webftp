@@ -424,20 +424,6 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 
 		switch ($arc['argc'])
 		{
-			// tar/gzip/bz2
-			default:
-				$cmd = $arc['cmd'].' '.$arc['argc'].' '.escapeshellarg($name).' '.implode(' ', $files);
-
-				$ssh = $this->remote;
-
-				if ($ssh)
-				{
-					$ssh->exec( 'cd ' . $dir . '; ' . $cmd );
-				}
-				unset($ssh);
-	
-				break;
-
 			// last resort
 			case 'pclzip':
 				@set_time_limit(60);
@@ -474,6 +460,20 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 				copy( $archive_path, $dir . $this->separator . $name );
 				unlink( $archive_path );
 				
+				break;
+
+			// tar/gzip/bz2
+			default:
+				$cmd = $arc['cmd'].' '.$arc['argc'].' '.escapeshellarg($name).' '.implode(' ', $files);
+
+				$ssh = $this->remote;
+
+				if ($ssh)
+				{
+					$ssh->exec( 'cd ' . $dir . '; ' . $cmd );
+				}
+				unset($ssh);
+	
 				break;
 		}
 
