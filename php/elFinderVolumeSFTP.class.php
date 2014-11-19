@@ -54,10 +54,12 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	protected function configure() {
 		elFinderVolumeDriver::configure();
 
-		$this->disabled[] = 'archive';
+		// Disable archive browsing
+		$this->archivers['extract'] = array();
 		$this->disabled[] = 'extract';
 		$this->disabled[] = 'unpack';
 
+		// Disable creating symlinks
 		$this->disabled[] = 'symlink';
 	}
 
@@ -346,14 +348,33 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 
 	/********************  archive manipulations *************************/
 
+	/**
+	 * Create archive and return its path
+	 *
+	 * @param  string  $dir    target dir
+	 * @param  array   $files  files names list
+	 * @param  string  $name   archive name
+	 * @param  array   $arc    archiver options
+	 * @return string|bool
+	 **/
+	protected function _archive($dir, $files, $name, $arc) {
+		$cwd = getcwd();
+		chdir($dir);
+		
+		$files = array_map('escapeshellarg', $files);
+		
+		$cmd = $arc['cmd'].' '.$arc['argc'].' '.escapeshellarg($name).' '.implode(' ', $files);
+		$this->procExec($cmd, $o, $c);
+		chdir($cwd);
+
+		$path = $dir.$this->separator.$name;
+		return file_exists($path) ? $path : false;
+	}
+
 	protected function _unpack($path, $arc) {
 	}
 
 	protected function _extract($path, $arc) {
-		return FALSE;
-	}
-
-	protected function _archive($dir, $files, $name, $arc) {
 		return FALSE;
 	}
 }
