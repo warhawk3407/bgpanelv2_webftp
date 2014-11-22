@@ -100,10 +100,11 @@ $opts = array(
 			'driver'        => 'SFTP',
 			'alias'			=> 'Remote-FS',
 			'path'			=> '/home/user/',
-			'stream'		=> 'sftp://user:pass@ip:22',
+			'stream'		=> 'sftp://user:password@ip:22',
 			'separator'		=> '/',
 			'accessControl' => 'access',
-			'tmbPath' 		=> ELFINDER_TMB_PATH
+			'tmbPath' 		=> ELFINDER_TMB_PATH,
+			'tmpPath'		=> ELFINDER_TMP_PATH
 		)
 	)
 );

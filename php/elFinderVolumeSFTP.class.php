@@ -287,23 +287,17 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 * @param  resource  $fp   file pointer
 	 * @param  string    $dir  target dir path
 	 * @param  string    $name file name
+	 * @param  array     $stat file stat (required by some virtual fs)
 	 * @return bool|string
 	 **/
-	protected function _save($fp, $dir, $name, $mime, $w, $h) {
+	protected function _save($fp, $dir, $name, $stat) {
 		$path = $dir.$this->separator.$name;
 
-		if (!($target = @fopen($path, 'a+b'))) {
+		if (@file_put_contents($path, $fp) === false) {
 			return false;
 		}
 
-		while (!feof($fp)) {
-			fwrite($target, fread($fp, 8192));
-		}
-
-		fclose($target);
-
 		@chmod($path, $this->options['fileMode']);
-
 		clearstatcache();
 		return $path;
 	}
@@ -337,21 +331,26 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 		if (is_link($path)) {
 			return true;
 		}
-
+		
 		if (is_dir($path)) {
 			foreach (scandir($path) as $name) {
 				if ($name != '.' && $name != '..') {
-					$p = $path.$this->separator.$name;
-					if (is_link($p)) {
+					$p = $path . $this->separator . $name;
+					if (is_link($p) || !$this->nameAccepted($name)) {
 						return true;
 					}
 					if (is_dir($p) && $this->_findSymlinks($p)) {
 						return true;
+					} elseif (is_file($p)) {
+						$this->archiveSize += sprintf('%u', filesize($p));
 					}
 				}
 			}
+		} else {
+			
+			$this->archiveSize += sprintf('%u', filesize($path));
 		}
-
+		
 		return false;
 	}
 
