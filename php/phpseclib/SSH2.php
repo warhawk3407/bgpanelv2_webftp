@@ -8,7 +8,7 @@
  * Here are some examples of how to use this library:
  * <code>
  * <?php
- *    include 'SSH2.php';
+ *    include 'Net/SSH2.php';
  *
  *    $ssh = new Net_SSH2('www.domain.tld');
  *    if (!$ssh->login('username', 'password')) {
@@ -23,7 +23,7 @@
  * <code>
  * <?php
  *    include 'RSA.php';
- *    include 'SSH2.php';
+ *    include 'Net/SSH2.php';
  *
  *    $key = new Crypt_RSA();
  *    //$key->setPassword('whatever');
@@ -971,7 +971,7 @@ class Net_SSH2
         $timeout-= $elapsed;
 
         if ($timeout <= 0) {
-            user_error("Cannot connect to $host. Banner timeout");
+            user_error("Cannot connect to $host. Timeout error");
             return false;
         }
 
@@ -984,7 +984,7 @@ class Net_SSH2
         // on windows this returns a "Warning: Invalid CRT parameters detected" error
         // the !count() is done as a workaround for <https://bugs.php.net/42682>
         if (!@stream_select($read, $write, $except, $sec, $usec) && !count($read)) {
-            user_error(rtrim("Cannot connect to $host. Banner timeout"));
+            user_error("Cannot connect to $host. Banner timeout");
             return false;
         }
 
@@ -2261,7 +2261,7 @@ class Net_SSH2
     /**
      * Execute Command
      *
-     * If $block is set to false then Net_SSH2::_get_channel_packet(NET_SSH2_CHANNEL_EXEC) will need to be called manually.
+     * If $callback is set to false then Net_SSH2::_get_channel_packet(NET_SSH2_CHANNEL_EXEC) will need to be called manually.
      * In all likelihood, this is not a feature you want to be taking advantage of.
      *
      * @param String $command
@@ -3769,8 +3769,9 @@ class Net_SSH2
                 $e = new Math_BigInteger($this->_string_shift($server_public_host_key, $temp['length']), -256);
 
                 $temp = unpack('Nlength', $this->_string_shift($server_public_host_key, 4));
-                $n = new Math_BigInteger($this->_string_shift($server_public_host_key, $temp['length']), -256);
-                $nLength = $temp['length'];
+                $rawN = $this->_string_shift($server_public_host_key, $temp['length']);
+                $n = new Math_BigInteger($rawN, -256);
+                $nLength = strlen(ltrim($rawN, "\0"));
 
                 /*
                 $temp = unpack('Nlength', $this->_string_shift($signature, 4));
@@ -3807,7 +3808,7 @@ class Net_SSH2
                 $s = $s->toBytes();
 
                 $h = pack('N4H*', 0x00302130, 0x0906052B, 0x0E03021A, 0x05000414, sha1($this->exchange_hash));
-                $h = chr(0x01) . str_repeat(chr(0xFF), $nLength - 3 - strlen($h)) . $h;
+                $h = chr(0x01) . str_repeat(chr(0xFF), $nLength - 2 - strlen($h)) . $h;
 
                 if ($s != $h) {
                     user_error('Bad server signature');

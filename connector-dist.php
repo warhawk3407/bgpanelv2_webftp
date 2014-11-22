@@ -16,8 +16,8 @@ include_once dirname(__FILE__).DIRECTORY_SEPARATOR. 'php' .DIRECTORY_SEPARATOR.'
 require dirname(__FILE__). DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'pclzip' . DIRECTORY_SEPARATOR . 'pclzip.lib.php';
 
 // PHPSECLIB
-require dirname(__FILE__). DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'phpseclib' . DIRECTORY_SEPARATOR . 'SFTP.php';
 require dirname(__FILE__). DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'phpseclib' . DIRECTORY_SEPARATOR . 'SSH2.php';
+require dirname(__FILE__). DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'phpseclib' . DIRECTORY_SEPARATOR . 'SFTP.php';
 require dirname(__FILE__). DIRECTORY_SEPARATOR . 'php' . DIRECTORY_SEPARATOR . 'phpseclib' . DIRECTORY_SEPARATOR . 'SFTP_StreamWrapper.php';
 
 /**
