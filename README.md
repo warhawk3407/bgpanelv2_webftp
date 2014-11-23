@@ -1,6 +1,4 @@
-elFinder
-@nightly-2.1
-@22/11/2014
+elFinder - bgpanel v2 - standalone webapp
 ========
 
 <pre>
@@ -11,38 +9,27 @@ elFinder
 |  __/ | |    | | | | | (_| |  __/ |   
  \___|_|_|    |_|_| |_|\__,_|\___|_|   
 </pre>
+For the Bright Game Panel Project, by warhawk3407
+
+- nightly-2.1
+- 22/11/2014
 
 elFinder is an open-source file manager for web, written in JavaScript using
 jQuery UI. Creation is inspired by simplicity and convenience of Finder program
 used in Mac OS X operating system.
 
 
-Features
+Install
 --------
-
- * All operations with files and folders on a remote server (copy, move,
-   upload, create folder/file, rename, etc.)
- * High performance server beckend and light client UI
- * Multi-root support
- * Local file system, MySQL, FTP volume storage drivers
- * Background file upload with Drag & Drop HTML5 support
- * List and Icons view
- * Keyboard shortcuts
- * Standard methods of file/group selection using mouse or keyboard
- * Move/Copy files with Drag & Drop
- * Archives create/extract (zip, rar, 7z, tar, gzip, bzip2)
- * Rich context menu and toolbar
- * Quicklook, preview for common file types
- * Edit text files and images
- * "Places" for your favorites
- * Calculate directory sizes
- * Thumbnails for image files
- * Easy to integrate with web editors (elRTE, CKEditor, TinyMCE)
- * Flexible configuration of access rights, upload file types, user interface
-   and other
- * Extensibility
- * Simple client-server API based on JSON
-
+1. **Edit** `connector-dist.php`
+	- `'path'			=> 'sftp://user:pass@ip:22/home/user'`
+	- Modify user, pass, ip and the user home directory
+	- Verify that the syntax is correct
+	- [http://php.net/manual/en/function.parse-url.php](http://php.net/manual/en/function.parse-url.php "URL-Format")
+2. **Rename** `connector-dist.php` to `connector.php`
+3. **Make the `files/` folder writeable by the server**
+	- For example, `chown -R www-data /elfinder/install/path/files/.`
+4. **Enjoy :-)**
 
 Requirements
 ------------
@@ -64,7 +51,7 @@ Authors
 
  * Chief developer: Dmitry "dio" Levashov <dio@std42.ru>
  * Maintainer: Troex Nevelin <troex@fury.scancode.ru>
- * Developers: Alexey Sukhotin <strogg@yandex.ru>, Naoki Sawada <hypweb@gmail.com>
+ * Developers: Alexey Sukhotin <strogg@yandex.ru>, Naoki Sawada <hypweb@gmail.com>, Nikita Rousseau <devel [ a t ] bgpanel [ d o t ] net >
  * Icons: [PixelMixer](http://pixelmixer.ru), [Yusuke Kamiyamane](http://p.yusukekamiyamane.com)
 
 License
