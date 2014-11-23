@@ -99,8 +99,7 @@ $opts = array(
 		array(
 			'driver'        => 'SFTP',
 			'alias'			=> 'Remote-FS',
-			'path'			=> '/home/user/',
-			'stream'		=> 'sftp://user:password@ip:22',
+			'path'			=> 'sftp://user:pass@ip:22/home/user',
 			'separator'		=> '/',
 			'accessControl' => 'access',
 			'tmbPath' 		=> ELFINDER_TMB_PATH,

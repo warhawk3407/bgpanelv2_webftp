@@ -43,10 +43,8 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 **/
 	protected function init()
 	{
-		// normalize root path
-		$this->root = $this->options['path'] = $this->_normpath($this->options['path']);
-
 		$parts = parse_url($this->root);
+
 		$ssh = new Net_SSH2($parts['host'], $parts['port']);
 		if ($ssh->login($parts['user'], $parts['pass'])) {
 			$this->remote = $ssh;
@@ -82,7 +80,7 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 * @return string
 	 **/
 	protected function _joinPath($dir, $name) {
-		return $dir.$this->separator.$name;
+		return $dir . $this->separator . $name;
 	}
 
 	/**
@@ -91,49 +89,25 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 * @param  string  $path  path
 	 * @return string
 	 **/
-	protected function _normpath($path) {
-		$stream_url = $this->options['stream'];
+	protected function _normpath($path)
+	{
+		// Explode URL
+		$url_parts = parse_url($path);
+		$path = $url_parts['path'];
 
-		if (empty($path)) {
-			return '.';
-		}
+		$path =  preg_replace("/^\//", "", $path);
+		$path =  preg_replace("/\/\//", "/", $path);
+		$path =  preg_replace("/\/$/", "", $path);
 
-		if (strpos($path, '/') === 0) {
-			$initial_slashes = true;
-		} else {
-			$initial_slashes = false;
-		}
+		// Rebuild URL
+		$url =
+			$url_parts['scheme'] . '://' .
+			$url_parts['user'] . ':' .
+			$url_parts['pass'] . '@' .
+			$url_parts['host'] . ':' .
+			$url_parts['port'] . '/' . $path;
 
-		if (($initial_slashes)
-		&& (strpos($path, '//') === 0)
-		&& (strpos($path, '///') === false)) {
-			$initial_slashes = 2;
-		}
-
-		$initial_slashes = (int) $initial_slashes;
-
-		$comps = explode('/', $path);
-		$new_comps = array();
-		foreach ($comps as $comp) {
-			if (in_array($comp, array('', '.'))) {
-				continue;
-			}
-
-			if (($comp != '..')
-			|| (!$initial_slashes && !$new_comps)
-			|| ($new_comps && (end($new_comps) == '..'))) {
-				array_push($new_comps, $comp);
-			} elseif ($new_comps) {
-				array_pop($new_comps);
-			}
-		}
-		$comps = $new_comps;
-		$path = implode('/', $comps);
-		if ($initial_slashes) {
-			$path = str_repeat('/', $initial_slashes) . $path;
-		}
-
-		return $path ? $stream_url . $path : $stream_url . '.';
+		return $url;
 	}
 
 	/**
@@ -144,6 +118,28 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	 **/
 	protected function _abspath($path) {
 		return $path == DIRECTORY_SEPARATOR ? $this->root : $this->root.$this->separator.$path;
+	}
+
+	/**
+	 * Return true if $path is children of $parent
+	 *
+	 * @param  string  $path    path to check
+	 * @param  string  $parent  parent path
+	 * @return bool
+	 * @author Dmitry (dio) Levashov
+	 **/
+	protected function _inpath($path, $parent)
+	{
+		if ($parent)
+		{
+			$path = parse_url($path, PHP_URL_PATH);
+			$parent = parse_url($parent, PHP_URL_PATH);
+
+			if (strpos($path, $parent.'/') === FALSE) {
+				return FALSE;
+			}
+		}
+		return TRUE;
 	}
 
 	/***************** file stat ********************/
@@ -367,41 +363,53 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 			'create'  => array()
 			);
 
-		// Get remote-fs utils
-		$ssh = $this->remote;
-
-		if ($ssh)
+		// Cache method
+		if (empty($_SESSION['ELFINDER']['ARCS']))
 		{
-			$tar = $ssh->exec('tar --version');
+			// Get remote-fs utils
+			$ssh = $this->remote;
 
-			if (strstr($tar, "(GNU tar)") !== FALSE) {
-				$arcs['create']['application/x-tar']  = array('cmd' => 'tar', 'argc' => '-cf', 'ext' => 'tar');
+			if ($ssh)
+			{
+				$tar = $ssh->exec('tar --version');
 
-				$gzip = $ssh->exec('gzip --version');
+				if (strstr($tar, "(GNU tar)") !== FALSE) {
+					$arcs['create']['application/x-tar']  = array('cmd' => 'tar', 'argc' => '-cf', 'ext' => 'tar');
 
-				if (strstr($gzip, "Jean-loup Gailly") !== FALSE) {
-					$arcs['create']['application/x-gzip']  = array('cmd' => 'tar', 'argc' => '-czf', 'ext' => 'tgz');
+					$gzip = $ssh->exec('gzip --version');
+
+					if (strstr($gzip, "Jean-loup Gailly") !== FALSE) {
+						$arcs['create']['application/x-gzip']  = array('cmd' => 'tar', 'argc' => '-czf', 'ext' => 'tgz');
+					}
+
+					$bzip2 = $ssh->exec('bzip2 --version');
+
+					if (strstr($bzip2, "bzip2, a block-sorting file compressor.") !== FALSE) {
+						$arcs['create']['application/x-bzip2']  = array('cmd' => 'tar', 'argc' => '-cjf', 'ext' => 'tbz');
+					}
 				}
 
-				$bzip2 = $ssh->exec('bzip2 --version');
+				$zip = $ssh->exec('zip -v');
 
-				if (strstr($bzip2, "bzip2, a block-sorting file compressor.") !== FALSE) {
-					$arcs['create']['application/x-bzip2']  = array('cmd' => 'tar', 'argc' => '-cjf', 'ext' => 'tbz');
+				if (strstr($zip, "Info-ZIP") !== FALSE) {
+					$arcs['create']['application/zip']  = array('cmd' => 'zip', 'argc' => '-r9', 'ext' => 'zip');
 				}
 			}
+			unset($ssh);
 
-			$zip = $ssh->exec('zip -v');
-
-			if (strstr($zip, "Info-ZIP") !== FALSE) {
-				$arcs['create']['application/zip']  = array('cmd' => 'zip', 'argc' => '-r9', 'ext' => 'zip');
+			// PclZip as last resort
+			if (function_exists('gzopen') && empty($arcs['create']['application/zip']))
+			{
+				$arcs['create']['application/zip'] = array('cmd' => 'zlib', 'argc' => 'pclzip', 'ext' => 'zip');
 			}
+
+			// Cache it
+			$_SESSION['ELFINDER']['ARCS'] = $arcs;
 		}
-		unset($ssh);
-
-		// PclZip as last resort
-		if (function_exists('gzopen') && empty($arcs['create']['application/zip']))
+		else
 		{
-			$arcs['create']['application/zip'] = array('cmd' => 'zlib', 'argc' => 'pclzip', 'ext' => 'zip');
+			// Retrieve it
+			$arcs = $_SESSION['ELFINDER']['ARCS'];
 		}
 
 		$this->archivers = $arcs;
