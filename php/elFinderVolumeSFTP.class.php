@@ -5,7 +5,7 @@
  *
  * Archives are NOT SUPPORTED, as well as symlinks.
  *
- * @author Nikita ROUSSEAU (warhawk3407)
+ * @author Nikita ROUSSEAU <warhawk3407>
  **/
 class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 
@@ -427,7 +427,8 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 	protected function _archive($dir, $files, $name, $arc)
 	{
 		$files = array_map('escapeshellarg', $files);
-		$archive_path = $dir . $this->separator . $name;
+
+		$archive_path = $dir . $this->separator . $name; // Remote URL
 
 		switch ($arc['argc'])
 		{
@@ -471,6 +472,7 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 
 			// tar/gzip/bz2
 			default:
+				$dir = parse_url($dir, PHP_URL_PATH); // Remote PATH
 				$cmd = $arc['cmd'].' '.$arc['argc'].' '.escapeshellarg($name).' '.implode(' ', $files);
 
 				$ssh = $this->remote;
