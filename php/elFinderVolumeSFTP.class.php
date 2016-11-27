@@ -297,7 +297,88 @@ class elFinderVolumeSFTP extends elFinderVolumeLocalFileSystem {
 		clearstatcache();
 		return $path;
 	}
+	
+	/**
+	* Return stat for given path.
+	* Stat contains following fields:
+	* - (int)    size    file size in b. required
+	* - (int)    ts      file modification time in unix time. required
+	* - (string) mime    mimetype. required for folders, others - optionally
+	* - (bool)   read    read permissions. required
+	* - (bool)   write   write permissions. required
+	* - (bool)   locked  is object locked. optionally
+	* - (bool)   hidden  is object hidden. optionally
+	* - (string) alias   for symlinks - link target path relative to root path. optionally
+	* - (string) target  for symlinks - link target path. optionally
+	*
+	* If file does not exists - returns empty array or false.
+	*
+	* @param  string  $path    file path 
+	* @return array|false
+	* @author Shooting King (Harsha Raghu)
+	**/
+	
+	protected function _stat($path) {
+		$stat = array();
 
+		if (!file_exists($path)) {
+			return $stat;
+		}
+
+		//Verifies the given path is the root or is inside the root. Prevents directory traveral.
+		if (!$this->aroot) {
+			// for Inheritance class ( not calling parent::configure() )
+			$this->aroot = realpath($this->root);
+		}
+		if (!$this->_inpath($path, $this->aroot)) {
+			return $stat;
+		}
+
+		if ($path != $this->root && is_link($path)) {
+			if (($target = $this->readlink($path)) == false 
+			|| $target == $path) {
+				$stat['mime']  = 'symlink-broken';
+				$stat['read']  = false;
+				$stat['write'] = false;
+				$stat['size']  = 0;
+				return $stat;
+			}
+			$stat['alias']  = $this->_path($target);
+			$stat['target'] = $target;
+			$path  = $target;
+			$lstat = lstat($path);
+			$size  = sprintf('%u', $lstat['size']);
+		} else {
+			$size = sprintf('%u', @filesize($path));
+		}
+		
+		$dir = is_dir($path);
+		
+		$stat['mime']  = $dir ? 'directory' : $this->mimetype($path);
+		$stat['ts']    = filemtime($path);
+		$stat['read']  = 0;
+		$stat['write'] = 0;
+		$ssh = $this->remote;
+		if ($ssh)
+		{
+			$parts = parse_url($path);
+			
+			if( trim($ssh->exec( 'test -w ' . $parts['path'] . " && echo 'Y' || echo 'N' " )) == 'Y' )
+			{
+				$stat['write'] = 1;
+			}
+			if( trim($ssh->exec( 'test -r ' . $parts['path'] . " && echo 'Y' || echo 'N' " )) == 'Y' )
+			{
+				$stat['read'] = 1;
+			}
+		}
+		
+		if ($stat['read']) {
+			$stat['size'] = $dir ? 0 : $size;
+		}
+		return $stat;
+	}
+	
 	/**
 	 * Write a string to a file
 	 *
